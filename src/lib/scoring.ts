@@ -147,8 +147,10 @@ export function alignWords(words: RefWord[], R: Heard[]) {
         const maxB = ref.length * 3 + 4;
         const E = editTable(ref, R, j, maxB);
         const last = E[ref.length];
+        // 「誤り」と「自然な音の変化」で同じくらい説明できるときは、標準の読み（＝誤りとして指摘）を優先する
+        const changePenalty = words[w].notes?.[vi] ? 0.3 : 0;
         for (let b = 0; b < last.length; b++) {
-          const c = row[j].cost + last[b];
+          const c = row[j].cost + last[b] + changePenalty;
           if (c < D[w + 1][j + b].cost) D[w + 1][j + b] = { cost: c, j, v: vi };
         }
       });
@@ -287,6 +289,13 @@ export function assess(out: RecogOutput, sentences: string[]): Assessment {
         ops.push(op);
       } else {
         const hp = phones[s.ins];
+        const trailing = !seq.slice(si + 1).some((x) => 'op' in x);
+        // 1語ずつ丁寧に読むと、語末の子音のあとに短いあいまいな「ァ」（破裂の余韻）が聞こえる。
+        // これはネイティブでも起こるため数えない（日本語の「ト」「ク」「ル」のような母音は数える）
+        if (trailing && prevConsonant && hp.p === 'ʌ') {
+          lastHeardEnd = hp.end;
+          return;
+        }
         inserted.push({ idx: s.ins, epenthesis: prevConsonant && isVowel(hp.p), leading: !seenOp });
         lastHeardEnd = hp.end;
       }
@@ -311,6 +320,13 @@ export function assess(out: RecogOutput, sentences: string[]): Assessment {
     const lead = cur.inserted.filter((x) => x.leading && isVowel(phones[x.idx].p));
     if (!lead.length) continue;
     const first = lead[0];
+    if (phones[first.idx].p === 'ʌ') {
+      // 前の語の語末の破裂の余韻（あいまいな「ァ」）は数えない
+      cur.inserted = cur.inserted.filter((x) => x !== first);
+      cur.total--;
+      cur.score = Math.round((cur.correct / Math.max(1, cur.total)) * 100);
+      continue;
+    }
     cur.inserted = cur.inserted.filter((x) => x !== first);
     cur.total--;
     cur.score = Math.round((cur.correct / Math.max(1, cur.total)) * 100);
@@ -324,7 +340,7 @@ export function assess(out: RecogOutput, sentences: string[]): Assessment {
   if (lastScored) {
     for (let i = trailingFrom; i < phones.length; i++) {
       const lastOp = lastScored.ops[lastScored.ops.length - 1];
-      if (isVowel(phones[i].p) && lastOp && !isVowel(lastOp.ref.p) && i === trailingFrom) {
+      if (isVowel(phones[i].p) && phones[i].p !== 'ʌ' && lastOp && !isVowel(lastOp.ref.p) && i === trailingFrom) {
         lastScored.inserted.push({ idx: i, epenthesis: true });
         lastScored.total++;
         lastScored.score = Math.round((lastScored.correct / lastScored.total) * 100);

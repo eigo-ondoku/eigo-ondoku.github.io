@@ -13,13 +13,18 @@ export function loadDictionary(): Promise<Record<string, string>> {
 
 // 辞書には1つの読みしか入っていないため、よく使う語の別の読み（弱形・強形・同綴異音語）を補う
 const EXTRA: Record<string, string[]> = {
-  a: ['EY1'], the: ['DH IY0', 'DH IY1'], to: ['T UW1', 'T AH0'], of: ['AH1 V'], and: ['AE1 N D', 'AH0 N', 'N'],
-  for: ['F ER0'], you: ['Y AH0'], your: ['Y ER0'], can: ['K AE1 N'], was: ['W AA1 Z'], are: ['ER0'], at: ['AH0 T'],
+  // 機能語の弱形・強形
+  a: ['EY1'], the: ['DH IY0', 'DH IY1'], to: ['T UW1', 'T AH0'], of: ['AH1 V', 'AH0 V'], and: ['AE1 N D', 'AH0 N', 'N'],
+  for: ['F ER0'], you: ['Y AH0'], your: ['Y ER0'], can: ['K AE1 N'], was: ['W AH1 Z', 'W AH0 Z'], are: ['ER0'], at: ['AH0 T'],
   from: ['F ER0 M'], that: ['DH AH0 T'], them: ['DH AH0 M'], have: ['HH AH0 V'], has: ['HH AH0 Z'], or: ['ER0'],
-  read: ['R IY1 D'], live: ['L AY1 V'], lead: ['L EH1 D'], wind: ['W AY1 N D'], tear: ['T EH1 R'], close: ['K L OW1 Z'],
-  use: ['Y UW1 S'], record: ['R IH0 K AO1 R D'], present: ['P R IY0 Z EH1 N T'], object: ['AH0 B JH EH1 K T'],
-  wound: ['W AW1 N D'], minute: ['M AY0 N UW1 T'], content: ['K AH0 N T EH1 N T'], desert: ['D IH0 Z ER1 T'],
-  either: ['AY1 DH ER0'], neither: ['N AY1 DH ER0'], often: ['AO1 F T AH0 N'], been: ['B IH1 N'], just: ['JH AH0 S T'],
+  i: ['AH0', 'AA1'], just: ['JH AH0 S T'], been: ['B IH1 N'],
+  // アメリカ英語でよく聞く別の読み（ALT の試用結果で確認）
+  with: ['W IH1 TH'], really: ['R IY1 L IY0'],
+  // 同じつづりで読みが違う語（辞書には片方しか入っていないため、両方を正解にする）
+  read: ['R IY1 D'], live: ['L IH1 V'], lead: ['L IY1 D'], wind: ['W IH1 N D'], tear: ['T IH1 R'], close: ['K L OW1 Z'],
+  use: ['Y UW1 Z'], record: ['R EH1 K ER0 D'], present: ['P R IY0 Z EH1 N T'], object: ['AH0 B JH EH1 K T'],
+  wound: ['W UW1 N D'], minute: ['M AY0 N UW1 T'], content: ['K AH0 N T EH1 N T'], desert: ['D IH0 Z ER1 T'],
+  either: ['AY1 DH ER0'], neither: ['N AY1 DH ER0'], often: ['AO1 F T AH0 N'],
 };
 
 export interface RefWord {
@@ -81,6 +86,10 @@ const VOICELESS = new Set(['p', 't', 'k', 'f', 'θ', 's', 'ʃ', 'tʃ', 'h']);
 const SIBILANT_TH = new Set(['s', 'z', 'θ', 'ð']);
 const startsWithConsonant = (w?: RefWord) => Boolean(w?.variants.some((v) => v.length && !isVowel(v[0].p)));
 const startsWith = (w: RefWord | undefined, set: Set<string>) => Boolean(w?.variants.some((v) => v.length && set.has(v[0].p)));
+
+// 同じ場所で作る子音（同じ音、または声の有無だけが違う音）
+const PAIRS = [['p', 'b'], ['t', 'd'], ['k', 'g'], ['f', 'v'], ['θ', 'ð'], ['s', 'z'], ['ʃ'], ['tʃ', 'dʒ'], ['m'], ['n'], ['l'], ['ɹ']];
+const samePlace = (a: string, b: string) => PAIRS.some((g) => g.includes(a) && g.includes(b));
 
 type Rule = (v: RefPhone[], w: RefWord, prev?: RefWord, next?: RefWord) => { v: RefPhone[]; note: string }[];
 
@@ -148,6 +157,37 @@ const RULES: Rule[] = [
       if (v[k].p === 'ɪ' && v[k + 1].p === 'ŋ')
         for (const raised of ['i', 'eɪ']) out.push({ v: [...v.slice(0, k), { ...v[k], p: raised }, ...v.slice(k + 1)], note: `${w.raw} の ng の前の i が「イー」「エイ」寄りになる` });
     return out;
+  },
+  // 同じ（または声の有無だけが違う）子音が語の境目で続くと、1つにまとまる（bus stop, this seat, is singing）
+  (v, w, _p, next) => {
+    const last = v[v.length - 1];
+    if (!next || !last || isVowel(last.p) || !next.variants.some((nv) => nv[0] && samePlace(last.p, nv[0].p))) return [];
+    return [{ v: v.slice(0, -1), note: `${w.raw} ${next.raw} の境目の同じ子音が1つにまとまる` }];
+  },
+  (v, w, prev) => {
+    const first = v[0];
+    if (!prev || !first || isVowel(first.p) || v.length < 2 || !prev.variants.some((pv) => pv.length && samePlace(pv[pv.length - 1].p, first.p))) return [];
+    return [{ v: v.slice(1), note: `${prev.raw} ${w.raw} の境目の同じ子音が1つにまとまる` }];
+  },
+  // 文末の p・t・k は破裂させずに止めることが多い（bus stop. / finish it?）
+  (v, w, _p, next) => {
+    const last = v[v.length - 1];
+    if (next || v.length < 2 || !['p', 't', 'k'].includes(last?.p)) return [];
+    return [{ v: v.slice(0, -1), note: `${w.raw} の文末の ${last.p} を破裂させずに止める` }];
+  },
+  // ナチュラルスピードの決まった縮約（want to → wanna、have to → hafta、did you → dja、a lot of → a lotta）
+  (v, w, prev, next) => {
+    const n = w.norm,
+      out: { v: RefPhone[]; note: string }[] = [];
+    const P = (s: string) => arpaToRef(s);
+    if (n === 'want' && next?.norm === 'to') out.push({ v: P('W AA1 N'), note: 'want to が wanna になる' });
+    if (n === 'to' && prev?.norm === 'want') out.push({ v: P('AH0'), note: 'want to が wanna になる' });
+    if ((n === 'have' || n === 'has') && next?.norm === 'to') out.push({ v: n === 'have' ? P('HH AE1 F') : P('HH AE1 S'), note: `${n} to の v/z が「フ」「ス」になる` });
+    if (n === 'got' && next?.norm === 'to') out.push({ v: P('G AA1'), note: 'got to が gotta になる' });
+    if (n === 'to' && prev?.norm === 'got') out.push({ v: P('AH0'), note: 'got to が gotta になる' });
+    if (n === 'did' && next?.norm === 'you') out.push({ v: P('JH'), note: 'did you が「ジャ」「ジュ」になる' });
+    if (n === 'of' && startsWithConsonant(next)) out.push({ v: P('AH0'), note: 'of の v が子音の前で落ちる（a lot of → a lotta）' });
+    return out.filter((x) => x.v.length);
   },
 ];
 

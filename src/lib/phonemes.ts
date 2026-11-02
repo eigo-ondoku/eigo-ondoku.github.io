@@ -105,5 +105,7 @@ export function lenient(ref: RefPhone, heard: string): boolean {
   }
   if ((ref.p === 't' || ref.p === 'd') && heard === 'ɾ') return true;
   if (ref.p === 'ɝ' && heard === 'ɹ') return true;
+  // 母音の後の r は「アー」のような r の響きとして聞こえることがある（year, near, there）
+  if (ref.p === 'ɹ' && heard === 'ɝ') return true;
   return false;
 }
