@@ -1,7 +1,7 @@
 // 英文 → 単語ごとの正しい発音（CMU Pronouncing Dictionary を使用）
 // 辞書は約13万語。初回に一度だけ読み込む（アプリに同梱、外部通信なし）。
 
-import { arpaToRef, type RefPhone } from './phonemes';
+import { arpaToRef, isVowel, type RefPhone } from './phonemes';
 
 let dict: Record<string, string> | null = null;
 let loading: Promise<Record<string, string>> | null = null;
@@ -26,6 +26,7 @@ export interface RefWord {
   raw: string; // 表示用（句読点を除いた形）
   norm: string;
   variants: RefPhone[][]; // 正しい読み（複数可）。空なら辞書にない語
+  notes?: (string | null)[]; // variants と同じ並び。自然な音の変化で作った読みには説明を付ける
 }
 
 export function normalizeWord(w: string): string {
@@ -64,5 +65,53 @@ export function lookup(norm: string): RefPhone[][] {
 }
 
 export function textToRef(text: string): RefWord[] {
-  return splitWords(text).map((w) => ({ ...w, variants: lookup(w.norm) }));
+  const words: RefWord[] = splitWords(text).map((w) => {
+    const variants = lookup(w.norm);
+    return { ...w, variants, notes: variants.map(() => null) };
+  });
+  addConnectedSpeech(words);
+  return words;
+}
+
+const key = (v: RefPhone[]) => v.map((p) => p.p + (p.stress ?? '')).join(' ');
+function addVariant(w: RefWord, v: RefPhone[], note: string) {
+  if (!v.length || w.variants.some((x) => key(x) === key(v))) return;
+  w.variants.push(v);
+  (w.notes ??= w.variants.map(() => null)).length = w.variants.length - 1;
+  w.notes.push(note);
+}
+
+/**
+ * 音読で自然に起こる音の変化を「正しい読み」に加える（同じ文の中だけ）。
+ * 1. 脱落：子音＋語末の t/d の後に子音で始まる語が続くと、t/d が落ちる（next day, last night）
+ * 2. 同化：語末の t/d と you などの y がつながって「チュ」「ジュ」になる（did you, don't you）
+ * 3. 声門閉鎖：t＋弱い母音＋n で、t が喉で止まる（button, certain）
+ */
+export function addConnectedSpeech(words: RefWord[]) {
+  words.forEach((w, i) => {
+    const next = words[i + 1];
+    const base = [...w.variants];
+    for (const v of base) {
+      const n = v.length;
+      const last = v[n - 1];
+      // 1. 脱落
+      if (next?.variants.length && n >= 2 && (last.p === 't' || last.p === 'd') && !isVowel(v[n - 2].p) && next.variants.some((nv) => nv.length && !isVowel(nv[0].p)))
+        addVariant(w, v.slice(0, -1), `${w.raw} の語末の ${last.p} が次の語の前で落ちる（音の脱落）`);
+      // 2. 同化（前の語の側）
+      if (next?.variants.some((nv) => nv[0]?.p === 'j') && (last?.p === 't' || last?.p === 'd'))
+        addVariant(w, [...v.slice(0, -1), { p: last.p === 't' ? 'tʃ' : 'dʒ', stress: null }], `${w.raw} ${next.raw} の t/d と y がつながる（チュ・ジュの音）`);
+      // 3. 声門閉鎖（button → バッン）
+      for (let k = 1; k + 2 < n + 1; k++) {
+        const a = v[k],
+          b = v[k + 1],
+          c = v[k + 2];
+        if (a?.p === 't' && b && (b.p === 'ʌ' || b.p === 'ɪ') && b.stress === 0 && c?.p === 'n' && (k + 3 === n || !isVowel(v[k + 3].p)))
+          addVariant(w, [...v.slice(0, k), ...v.slice(k + 2)], `${w.raw} の t が喉で止まる（声門閉鎖）`);
+      }
+    }
+    // 2. 同化（後ろの語の側：you の y が前の語に吸収される）
+    const prev = words[i - 1];
+    const prevEndsTD = prev?.variants.some((pv) => ['t', 'd'].includes(pv[pv.length - 1]?.p));
+    if (prevEndsTD) for (const v of [...w.variants]) if (v[0]?.p === 'j' && v.length > 1) addVariant(w, v.slice(1), `${prev!.raw} ${w.raw} の t/d と y がつながる（チュ・ジュの音）`);
+  });
 }

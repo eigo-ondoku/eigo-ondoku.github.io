@@ -236,3 +236,4 @@ details.more summary { font-size: .9rem; }
   header h1 { margin: 8px 0 2px; }
   .app { padding-bottom: 96px; }
 }
+.conn-note { color: var(--good); margin: 6px 0; }

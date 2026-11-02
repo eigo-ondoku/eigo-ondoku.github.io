@@ -90,6 +90,7 @@ export interface WordResult {
   total: number;
   score: number | null; // 0〜100
   omitted: boolean;
+  connected?: string | null; // 自然な音の変化として正解にした説明
 }
 
 interface Cell {
@@ -223,6 +224,8 @@ export interface Assessment {
   ms: number;
   /** 画面にすぐ出す要点（はっきりした誤りがある語、点数の低い順） */
   issues: Issue[];
+  /** 自然な音の変化として正解にした箇所 */
+  connected: string[];
   /** 判定が微妙な箇所（AIの聞き取り誤りの可能性） */
   uncertain: { word: string; p: string; heard?: string }[];
 }
@@ -259,6 +262,7 @@ export function assess(out: RecogOutput, sentences: string[]): Assessment {
     if (sp.v < 0 || !w.variants.length)
       return { raw: w.raw, norm: w.norm, sentence: w.sentence, scored: false, ops: [], inserted: [], heard, correct: 0, total: 0, score: null, omitted: false };
     const ref = w.variants[sp.v];
+    const connected = w.notes?.[sp.v] ?? null;
     const { seq } = opsFor(ref, phones, sp.j, sp.k);
     const ops: Op[] = [];
     const inserted: WordResult['inserted'] = [];
@@ -293,7 +297,7 @@ export function assess(out: RecogOutput, sentences: string[]): Assessment {
     const total = ref.length + inserted.length;
     return {
       raw: w.raw, norm: w.norm, sentence: w.sentence, scored: true, ops, inserted, heard,
-      correct, total, score: Math.round((correct / Math.max(1, total)) * 100), omitted: ops.every((o) => o.kind === 'del'),
+      correct, total, score: Math.round((correct / Math.max(1, total)) * 100), omitted: ops.every((o) => o.kind === 'del'), connected,
     };
   });
 
@@ -398,9 +402,11 @@ export function assess(out: RecogOutput, sentences: string[]): Assessment {
     .sort((a, b) => (a.omitted === b.omitted ? (a.score ?? 0) - (b.score ?? 0) : a.omitted ? -1 : 1));
   const uncertain = scored.flatMap((r) => r.ops.filter((o) => o.uncertain).map((o) => ({ word: r.raw, p: o.ref.p, heard: o.heardP })));
 
+  const connected = [...new Set(results.filter((r) => r.connected && !r.omitted).map((r) => r.connected!))];
   return {
     issues,
     uncertain,
+    connected,
     score,
     passed: score != null && score >= PASS_SCORE && !omittedAny,
     words: results,

@@ -341,6 +341,11 @@ export function ResultPanel({ a, prosody, onSay }: { a: Assessment; prosody: Pro
       ) : (
         <p className="noissue">はっきりした誤りは見つかりませんでした。</p>
       )}
+      {a.connected.length > 0 && (
+        <p className="small conn-note" title="ネイティブの音読でも起こる自然な音の変化なので、減点していません">
+          ✓ 自然な音の変化として正解：{a.connected.slice(0, 3).join('／')}
+        </p>
+      )}
       {a.uncertain.length > 0 && (
         <p className="small unc-note" title="AIの聞き取り誤りの可能性があるため、点数の指摘とは分けています">
           判定が微妙：{a.uncertain.slice(0, 3).map((u) => `${u.word} /${u.p}/`).join('、')}
