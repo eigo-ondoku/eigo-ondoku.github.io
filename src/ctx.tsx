@@ -32,6 +32,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => setSaveError(saveData(data)), [data]);
   useEffect(() => {
+    document.documentElement.dataset.font = data.settings.font;
+  }, [data.settings.font]);
+  useEffect(() => {
     const off = onModel(setModel);
     checkModel(data.settings);
     loadDictionary().then(() => setDictReady(true));

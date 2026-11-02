@@ -2,6 +2,7 @@ import { useApp } from '../ctx';
 import { currentText, emptyData, exportJson, importJson, recordFor } from '../lib/storage';
 import { PHONEME_TIPS, soundName } from '../lib/tips';
 import { Progress } from '../components/common';
+import { MouthDiagram, hasDiagram } from '../components/MouthDiagram';
 
 export function RecordsView() {
   const { data, update, toast } = useApp();
@@ -80,7 +81,7 @@ export function RecordsView() {
           <p className="muted">採点を重ねると、AIがはっきり別の音と判断した音がここに集計されます（判定が微妙な箇所は含めません）。</p>
         ) : (
           <ul className="weak">
-            {weak.map(([p, w]) => {
+            {weak.map(([p, w], idx) => {
               const heard = Object.entries(w.heardAs).sort((a, b) => b[1] - a[1])[0];
               return (
                 <li key={p}>
@@ -88,6 +89,12 @@ export function RecordsView() {
                   <br />
                   <span className="small muted">例：{w.examples.join(', ')}</span>
                   {PHONEME_TIPS[p] && <p className="small">{PHONEME_TIPS[p]}</p>}
+                  {hasDiagram(p) && (
+                    <details className="mouth-wrap" open={idx === 0}>
+                      <summary>👄 口の形と空気の通り道を見る</summary>
+                      <MouthDiagram p={p} />
+                    </details>
+                  )}
                 </li>
               );
             })}

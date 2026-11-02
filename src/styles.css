@@ -1,3 +1,20 @@
+/* 書体：標準は同梱の BIZ UDPゴシック（SIL OFL）。教科書体は Windows 内蔵書体を使う */
+:root {
+  --font-sys: system-ui, -apple-system, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', sans-serif;
+  --font-ui: 'BIZ UDPGothic', var(--font-sys);
+  --font-en: var(--font-ui);
+}
+:root[data-font='ud-kyokasho'] {
+  --font-ui: 'UD デジタル 教科書体 NP-R', 'UD Digi Kyokasho NP-R', 'UD デジタル 教科書体 N-R', 'UD Digi Kyokasho N-R', 'BIZ UDPGothic', var(--font-sys);
+}
+:root[data-font='system'] {
+  --font-ui: var(--font-sys);
+  --font-en: Georgia, 'Times New Roman', serif;
+}
+.font-sample { font-size: 1.1rem; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.font-sample span { font-family: var(--font-en); display: block; margin-top: 2px; }
+.mouth-wrap { margin-top: 6px; }
+.mouth-wrap > summary { cursor: pointer; font-size: .9rem; color: var(--accent); font-weight: 700; }
 :root {
   --bg: #f7f4ee;
   --card: #fff;
@@ -11,7 +28,7 @@
   --mid: #c98a12;
   --bad: #c2412d;
   --radius: 14px;
-  font-family: system-ui, -apple-system, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', sans-serif;
+  font-family: var(--font-ui);
   color: var(--ink);
   background: var(--bg);
   line-height: 1.6;
@@ -60,7 +77,7 @@ input[type=range] { padding: 0; }
 
 .muted { color: var(--muted); }
 .small { font-size: .82rem; }
-.en { font-family: Georgia, 'Times New Roman', serif; }
+.en { font-family: var(--font-en); }
 .en.big { font-size: 1.5rem; line-height: 1.4; margin: 10px 0 4px; }
 .ja { color: #44514a; margin: 4px 0; }
 .notes { background: #fbf7e9; border-radius: 8px; padding: 6px 10px; font-size: .88rem; white-space: pre-wrap; }
@@ -88,7 +105,7 @@ input[type=range] { padding: 0; }
 .dot.cur { outline: 3px solid #9cc7ae; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-.chip { border: 1px dashed #c9c2b4; background: #fffdf9; border-radius: 8px; padding: 4px 10px; font-family: Georgia, serif; font-size: .95rem; cursor: pointer; }
+.chip { border: 1px dashed #c9c2b4; background: #fffdf9; border-radius: 8px; padding: 4px 10px; font-family: var(--font-en); font-size: .95rem; cursor: pointer; }
 .chip.on { background: var(--accent-soft); border-style: solid; }
 
 .meter { height: 6px; background: #f1ece3; border-radius: 9px; overflow: hidden; }
@@ -109,10 +126,10 @@ input[type=range] { padding: 0; }
 .rubric td { padding: 6px 4px; }
 .rubric .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; font-size: .9rem; }
 
-.recog { font-family: Georgia, serif; background: #f6f3ec; border-radius: 8px; padding: 6px 10px; }
+.recog { font-family: var(--font-en); background: #f6f3ec; border-radius: 8px; padding: 6px 10px; }
 .words { display: flex; flex-wrap: wrap; gap: 6px; }
-.w { display: inline-flex; flex-direction: column; align-items: center; border: 0; border-radius: 8px; padding: 4px 9px; font-family: Georgia, serif; font-size: 1rem; cursor: pointer; line-height: 1.2; }
-.w small { font-family: system-ui, sans-serif; font-size: .68rem; opacity: .8; }
+.w { display: inline-flex; flex-direction: column; align-items: center; border: 0; border-radius: 8px; padding: 4px 9px; font-family: var(--font-en); font-size: 1rem; cursor: pointer; line-height: 1.2; }
+.w small { font-family: var(--font-ui); font-size: .68rem; opacity: .8; }
 .legend .w { display: inline; padding: 1px 6px; font-size: .75rem; cursor: default; }
 .w.good { background: #e3f2e8; color: #1f6b3a; }
 .w.mid { background: #fdf0d2; color: #8a5a00; }
@@ -138,7 +155,7 @@ input[type=range] { padding: 0; }
 .pscore { display: block; font-weight: 700; }
 
 .karaoke { padding-left: 1.6em; max-height: 360px; overflow-y: auto; }
-.karaoke li { font-family: Georgia, serif; font-size: 1.1rem; padding: 6px; border-radius: 8px; color: #555; transition: all .2s; }
+.karaoke li { font-family: var(--font-en); font-size: 1.1rem; padding: 6px; border-radius: 8px; color: #555; transition: all .2s; }
 .karaoke li.on { background: var(--accent); color: #fff; font-size: 1.3rem; }
 .karaoke li.past { color: #aaa; }
 .player { width: 100%; margin-top: 8px; }
@@ -151,7 +168,7 @@ input[type=range] { padding: 0; }
 .weak li { border-bottom: 1px solid var(--line); padding: 8px 0; }
 
 .cert { background: linear-gradient(135deg, #d9b45a, #f6e7b0, #c79a35); padding: 6px; border-radius: 18px; margin: 10px 0 16px; }
-.cert-inner { background: #fffaf0; border-radius: 14px; text-align: center; padding: 18px; font-family: Georgia, serif; }
+.cert-inner { background: #fffaf0; border-radius: 14px; text-align: center; padding: 18px; font-family: var(--font-en); }
 .cert-title { font-size: 1.8rem; font-weight: 700; letter-spacing: .2em; margin: 0; color: #8a6a1c; }
 .cert-score { font-size: 2.2rem; font-weight: 800; margin: 4px 0; }
 
@@ -170,7 +187,7 @@ footer { margin-top: 30px; text-align: center; }
 .w.unc { text-decoration: underline dotted #3a6ea5 2px; text-underline-offset: 3px; }
 .w.epi { box-shadow: inset -3px 0 0 #c2412d; }
 .ph em.ok { color: var(--good); }
-.ipa { font-family: 'Charis SIL', 'Doulos SIL', 'Lucida Sans Unicode', system-ui, sans-serif; letter-spacing: .02em; }
+.ipa { font-family: 'Charis SIL', 'Doulos SIL', 'Lucida Sans Unicode', var(--font-ui); letter-spacing: .02em; }
 .linklike { background: none; border: 0; padding: 0; font: inherit; color: var(--accent); cursor: pointer; text-align: left; }
 .crumb { margin: 10px 0 0; }
 .texts { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
@@ -212,7 +229,7 @@ header h1 { font-size: 1.1rem; margin: 10px 0; white-space: nowrap; }
 .result p { margin: 2px 0; }
 .issues { list-style: none; padding: 0; margin: 12px 0 6px; }
 .issues li { display: flex; gap: 10px; align-items: baseline; padding: 7px 0; border-bottom: 1px dashed var(--line); }
-.iword { border: 0; background: #fbe0da; color: #a12f1c; font: 700 1.05rem Georgia, serif; border-radius: 7px; padding: 2px 9px; cursor: pointer; flex: 0 0 auto; }
+.iword { border: 0; background: #fbe0da; color: #a12f1c; font: 700 1.05rem var(--font-en); border-radius: 7px; padding: 2px 9px; cursor: pointer; flex: 0 0 auto; }
 .itxt { display: flex; flex-direction: column; gap: 2px; }
 .err b { font-family: 'Charis SIL', 'Lucida Sans Unicode', system-ui, sans-serif; }
 .tip1 { display: block; font-size: .82rem; color: #2f6f4f; }
@@ -237,3 +254,18 @@ details.more summary { font-size: .9rem; }
   .app { padding-bottom: 96px; }
 }
 .conn-note { color: var(--good); margin: 6px 0; }
+
+/* 発音の図 */
+.mouth { margin: 8px 0 4px; }
+.mouth-pics { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.mouth-side { width: 240px; height: auto; background: #fff; border: 1px solid var(--line); border-radius: 10px; }
+.mouth-front { width: 120px; height: auto; background: #fff; border: 1px solid var(--line); border-radius: 10px; }
+.mouth-notes { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 8px 0 4px; font-size: .9rem; }
+.mouth-notes dt { font-weight: 700; color: var(--accent); white-space: nowrap; }
+.mouth-notes dd { margin: 0; }
+.voiced { color: #c0392b; font-weight: 600; }
+.voiceless { color: #2f7fd1; font-weight: 600; }
+.mouth-legend { font-size: .75rem; color: var(--muted); margin: 2px 0; }
+.lg-flow, .lg-dash { color: #2f7fd1; font-weight: 700; }
+.lg-dot { color: #1f2a24; }
+.lg-voice { color: #d0453a; font-weight: 700; }

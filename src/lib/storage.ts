@@ -45,6 +45,7 @@ export interface Settings {
   modelUrl: string;
   vocabUrl: string;
   preprocUrl: string;
+  font: 'ud-gothic' | 'ud-kyokasho' | 'system';
 }
 export const defaultSettings: Settings = {
   browserVoice: '',
@@ -52,6 +53,7 @@ export const defaultSettings: Settings = {
   modelUrl: HF + 'onnx/model_quantized.onnx',
   vocabUrl: HF + 'vocab.json',
   preprocUrl: HF + 'preprocessor_config.json',
+  font: 'ud-gothic',
 };
 
 export interface AppData {

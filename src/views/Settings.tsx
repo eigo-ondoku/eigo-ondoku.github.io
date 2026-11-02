@@ -91,6 +91,24 @@ export function SettingsView() {
       </div>
 
       <div className="card">
+        <h3>文字の書体</h3>
+        <label>
+          書体
+          <select value={s.font} onChange={(e) => set({ font: e.target.value as typeof s.font })}>
+            <option value="ud-gothic">BIZ UDPゴシック（標準・どの端末でも同じ）</option>
+            <option value="ud-kyokasho">UDデジタル教科書体（Windowsのみ）</option>
+            <option value="system">端末の標準書体</option>
+          </select>
+        </label>
+        <p className="small muted">
+          UDデジタル教科書体は Windows 10/11 に入っている書体です。Mac・iPhone には入っていないため、選んでも BIZ UDPゴシックで表示されます。
+        </p>
+        <p className="font-sample">
+          あ・ア・文字 <span>The quick brown fox jumps over a lazy dog. agqy 1lI</span>
+        </p>
+      </div>
+
+      <div className="card">
         <h3>採点のしくみ</h3>
         <table className="table">
           <thead>
