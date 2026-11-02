@@ -74,44 +74,101 @@ export function textToRef(text: string): RefWord[] {
 }
 
 const key = (v: RefPhone[]) => v.map((p) => p.p + (p.stress ?? '')).join(' ');
-function addVariant(w: RefWord, v: RefPhone[], note: string) {
-  if (!v.length || w.variants.some((x) => key(x) === key(v))) return;
-  w.variants.push(v);
-  (w.notes ??= w.variants.map(() => null)).length = w.variants.length - 1;
-  w.notes.push(note);
-}
+const MAX_VARIANTS = 24; // 組み合わせが増えすぎないように上限を設ける
+
+const STOPS = new Set(['p', 't', 'k', 'b', 'd', 'g']);
+const VOICELESS = new Set(['p', 't', 'k', 'f', 'θ', 's', 'ʃ', 'tʃ', 'h']);
+const SIBILANT_TH = new Set(['s', 'z', 'θ', 'ð']);
+const startsWithConsonant = (w?: RefWord) => Boolean(w?.variants.some((v) => v.length && !isVowel(v[0].p)));
+const startsWith = (w: RefWord | undefined, set: Set<string>) => Boolean(w?.variants.some((v) => v.length && set.has(v[0].p)));
+
+type Rule = (v: RefPhone[], w: RefWord, prev?: RefWord, next?: RefWord) => { v: RefPhone[]; note: string }[];
 
 /**
- * 音読で自然に起こる音の変化を「正しい読み」に加える（同じ文の中だけ）。
- * 1. 脱落：子音＋語末の t/d の後に子音で始まる語が続くと、t/d が落ちる（next day, last night）
- * 2. 同化：語末の t/d と you などの y がつながって「チュ」「ジュ」になる（did you, don't you）
- * 3. 声門閉鎖：t＋弱い母音＋n で、t が喉で止まる（button, certain）
+ * 音読で自然に起こる音の変化（同じ文の中だけ）。どれも、アメリカ英語のネイティブの音読で普通に起こるもの。
+ * 日本語話者に多い誤り（母音を足す、R→L、TH→S、語末の母音の後の子音を落とす 等）は対象にしない。
  */
-export function addConnectedSpeech(words: RefWord[]) {
-  words.forEach((w, i) => {
-    const next = words[i + 1];
-    const base = [...w.variants];
-    for (const v of base) {
-      const n = v.length;
-      const last = v[n - 1];
-      // 1. 脱落
-      if (next?.variants.length && n >= 2 && (last.p === 't' || last.p === 'd') && !isVowel(v[n - 2].p) && next.variants.some((nv) => nv.length && !isVowel(nv[0].p)))
-        addVariant(w, v.slice(0, -1), `${w.raw} の語末の ${last.p} が次の語の前で落ちる（音の脱落）`);
-      // 2. 同化（前の語の側）
-      if (next?.variants.some((nv) => nv[0]?.p === 'j') && (last?.p === 't' || last?.p === 'd'))
-        addVariant(w, [...v.slice(0, -1), { p: last.p === 't' ? 'tʃ' : 'dʒ', stress: null }], `${w.raw} ${next.raw} の t/d と y がつながる（チュ・ジュの音）`);
-      // 3. 声門閉鎖（button → バッン）
-      for (let k = 1; k + 2 < n + 1; k++) {
-        const a = v[k],
-          b = v[k + 1],
-          c = v[k + 2];
-        if (a?.p === 't' && b && (b.p === 'ʌ' || b.p === 'ɪ') && b.stress === 0 && c?.p === 'n' && (k + 3 === n || !isVowel(v[k + 3].p)))
-          addVariant(w, [...v.slice(0, k), ...v.slice(k + 2)], `${w.raw} の t が喉で止まる（声門閉鎖）`);
-      }
+const RULES: Rule[] = [
+  // 語末の破裂音を破裂させずに止める／落とす（next day, Bright copper, up with）
+  (v, w, _p, next) => {
+    const last = v[v.length - 1];
+    if (!next || v.length < 2 || !STOPS.has(last.p) || !startsWithConsonant(next)) return [];
+    const afterConsonant = !isVowel(v[v.length - 2].p);
+    return [{ v: v.slice(0, -1), note: afterConsonant ? `${w.raw} の語末の ${last.p} が次の語の前で落ちる（音の脱落）` : `${w.raw} の語末の ${last.p} を破裂させずに止める` }];
+  },
+  // t/d ＋ you の y がつながる（did you, don't you）— 前の語の側
+  (v, w, _p, next) => {
+    const last = v[v.length - 1];
+    if (!next || !(last?.p === 't' || last?.p === 'd') || !next.variants.some((nv) => nv[0]?.p === 'j')) return [];
+    return [{ v: [...v.slice(0, -1), { p: last.p === 't' ? 'tʃ' : 'dʒ', stress: null }], note: `${w.raw} ${next.raw} の t/d と y がつながる（チュ・ジュの音）` }];
+  },
+  // 同じく後ろの語の側（you の y が前の語に吸収される）
+  (v, w, prev) => {
+    if (!prev || v[0]?.p !== 'j' || v.length < 2 || !prev.variants.some((pv) => ['t', 'd'].includes(pv[pv.length - 1]?.p))) return [];
+    return [{ v: v.slice(1), note: `${prev.raw} ${w.raw} の t/d と y がつながる（チュ・ジュの音）` }];
+  },
+  // t＋弱い母音＋n で t が喉で止まる（button, certain, mittens）
+  (v, w) => {
+    const out: { v: RefPhone[]; note: string }[] = [];
+    for (let k = 1; k + 2 < v.length + 1; k++) {
+      const [a, b, c] = [v[k], v[k + 1], v[k + 2]];
+      if (a?.p === 't' && b && (b.p === 'ʌ' || b.p === 'ɪ') && b.stress === 0 && c?.p === 'n' && (k + 3 === v.length || !isVowel(v[k + 3].p)))
+        out.push({ v: [...v.slice(0, k), ...v.slice(k + 2)], note: `${w.raw} の t が喉で止まる（声門閉鎖）` });
     }
-    // 2. 同化（後ろの語の側：you の y が前の語に吸収される）
-    const prev = words[i - 1];
-    const prevEndsTD = prev?.variants.some((pv) => ['t', 'd'].includes(pv[pv.length - 1]?.p));
-    if (prevEndsTD) for (const v of [...w.variants]) if (v[0]?.p === 'j' && v.length > 1) addVariant(w, v.slice(1), `${prev!.raw} ${w.raw} の t/d と y がつながる（チュ・ジュの音）`);
+    return out;
+  },
+  // 弱い母音＋l/n/m で母音が消え、l/n/m だけで音節になる（woolen, kettles）。語末側の L は「オ」のように響くことがある（暗い L）
+  (v, w) => {
+    const out: { v: RefPhone[]; note: string }[] = [];
+    for (let k = 1; k + 1 < v.length; k++) {
+      const [b, c] = [v[k], v[k + 1]];
+      if (!(b.stress === 0 && (b.p === 'ʌ' || b.p === 'ɪ') && ['l', 'n', 'm'].includes(c.p))) continue;
+      if (!(k + 2 === v.length || !isVowel(v[k + 2].p))) continue;
+      if (isVowel(v[k - 1].p)) continue;
+      out.push({ v: [...v.slice(0, k), ...v.slice(k + 1)], note: `${w.raw} の弱い母音が消え、${c.p} だけで発音される` });
+      if (c.p === 'l')
+        for (const dark of ['oʊ', 'ʊ'])
+          out.push({ v: [...v.slice(0, k), { p: dark, stress: 0 }, ...v.slice(k + 2)], note: `${w.raw} の語末の L が「オ」のように響く（暗い L）` });
+    }
+    return out;
+  },
+  // 語末の th が次の語の影響を受ける（with strings）：無声音の前で声が抜ける／s・z・th の前で弱まって消える
+  (v, w, _p, next) => {
+    const last = v[v.length - 1];
+    if (!next || !(last?.p === 'ð' || last?.p === 'θ')) return [];
+    const out: { v: RefPhone[]; note: string }[] = [];
+    if (last.p === 'ð' && startsWith(next, VOICELESS)) out.push({ v: [...v.slice(0, -1), { p: 'θ', stress: null }], note: `${w.raw} の th が次の無声音の影響で息だけになる` });
+    if (startsWith(next, SIBILANT_TH)) out.push({ v: v.slice(0, -1), note: `${w.raw} の th が次の ${next.raw} の音に吸収される` });
+    return out;
+  },
+  // ng の前の i が「イー」「エイ」寄りになる（strings, things）
+  (v, w) => {
+    const out: { v: RefPhone[]; note: string }[] = [];
+    for (let k = 0; k + 1 < v.length; k++)
+      if (v[k].p === 'ɪ' && v[k + 1].p === 'ŋ')
+        for (const raised of ['i', 'eɪ']) out.push({ v: [...v.slice(0, k), { ...v[k], p: raised }, ...v.slice(k + 1)], note: `${w.raw} の ng の前の i が「イー」「エイ」寄りになる` });
+    return out;
+  },
+];
+
+export function addConnectedSpeech(words: RefWord[]) {
+  // 前後の語の判断は、変化を加える前の読みで行う
+  const original = words.map((w) => ({ ...w, variants: [...w.variants] }));
+  words.forEach((w, i) => {
+    if (!w.variants.length) return;
+    const prev = original[i - 1],
+      next = original[i + 1];
+    const notes = (w.notes ??= w.variants.map(() => null));
+    // ルールを順に当て、前のルールで作った読みにも重ねて当てる（複数の変化が同時に起こる場合）
+    for (const rule of RULES) {
+      const current = w.variants.map((v, j) => ({ v, note: notes[j] }));
+      for (const { v, note } of current)
+        for (const r of rule(v, w, prev, next)) {
+          if (w.variants.length >= MAX_VARIANTS) return;
+          if (!r.v.length || w.variants.some((x) => key(x) === key(r.v))) continue;
+          w.variants.push(r.v);
+          notes.push(note ? `${note}／${r.note}` : r.note);
+        }
+    }
   });
 }

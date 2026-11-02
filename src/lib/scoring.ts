@@ -402,7 +402,7 @@ export function assess(out: RecogOutput, sentences: string[]): Assessment {
     .sort((a, b) => (a.omitted === b.omitted ? (a.score ?? 0) - (b.score ?? 0) : a.omitted ? -1 : 1));
   const uncertain = scored.flatMap((r) => r.ops.filter((o) => o.uncertain).map((o) => ({ word: r.raw, p: o.ref.p, heard: o.heardP })));
 
-  const connected = [...new Set(results.filter((r) => r.connected && !r.omitted).map((r) => r.connected!))];
+  const connected = [...new Set(results.filter((r) => r.connected && !r.omitted).flatMap((r) => r.connected!.split('／')))];
   return {
     issues,
     uncertain,
