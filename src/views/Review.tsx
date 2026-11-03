@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { useApp } from '../ctx';
 import { currentText, recordFor, type Sentence } from '../lib/storage';
 import { speak, stopSpeaking } from '../lib/tts';
-import { isTouch, Kbd, ModelPanel, ResultPanel, SentenceWords, useAssessment, useHotkeys, useRecording, useSpeaker } from '../components/common';
+import { isTouch, Kbd, ModelPanel, ResultPanel, SentenceWords, useAssessment, useHotkeys, useRecording, useSpeaker, AnalysisStatus } from '../components/common';
 import type { Recording } from '../lib/recorder';
 import { playUrl } from '../lib/tts';
 import { addWeak } from './Practice';
@@ -189,7 +189,7 @@ export function ReviewView({ goTexts }: { goTexts: () => void }) {
           </div>
         )}
         {rec.error && <p className="error small">{rec.error}</p>}
-        {as.status && <p className="loading">⏳ {as.status}</p>}
+        {as.status && <AnalysisStatus status={as.status} progress={as.progress} />}
         {as.error && <p className="error">{as.error}</p>}
         {as.result && (
           <>

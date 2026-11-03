@@ -23,7 +23,34 @@ let worker: Worker | null = null;
 let info: ModelInfo = { state: 'unknown' };
 let vocab: string[] = [];
 const listeners = new Set<(i: ModelInfo) => void>();
-const pending = new Map<number, { res: (r: RecogOutput) => void; rej: (e: Error) => void }>();
+export interface RecogProgress {
+  /** 0〜1。null は目安がまだない（初回） */
+  frac: number | null;
+  /** 残り秒数の目安。null は不明 */
+  remain: number | null;
+  elapsed: number;
+}
+type Pending = { res: (r: RecogOutput) => void; rej: (e: Error) => void; done?: (frac: number) => void };
+const pending = new Map<number, Pending>();
+
+// この端末での処理速度（録音1秒あたりの処理ミリ秒）を覚えておき、次回の目安に使う
+const SPEED_KEY = 'ondoku-speed-v1';
+function loadSpeed(): number | null {
+  try {
+    const v = Number(localStorage.getItem(SPEED_KEY));
+    return v > 0 ? v : null;
+  } catch {
+    return null;
+  }
+}
+function saveSpeed(msPerSec: number) {
+  const old = loadSpeed();
+  try {
+    localStorage.setItem(SPEED_KEY, String(Math.round(old ? old * 0.5 + msPerSec * 0.5 : msPerSec)));
+  } catch {
+    /* ignore */
+  }
+}
 let readyWaiters: { res: () => void; rej: (e: Error) => void }[] = [];
 let nextId = 1;
 
@@ -59,6 +86,8 @@ function getWorker(): Worker {
       clearCrashFlag();
       pending.get(m.id)?.res({ probs: m.probs, frames: m.frames, V: m.V, vocab, frameSec: m.frameSec, ms: m.ms });
       pending.delete(m.id);
+    } else if (m.type === 'runprog') {
+      pending.get(m.id)?.done?.(m.done);
     } else if (m.type === 'cleared') set({ state: 'none' });
     else if (m.type === 'error') {
       if (m.id != null && pending.has(m.id)) {
@@ -123,7 +152,7 @@ export function clearModel() {
   caches.delete('ondoku-model-v1').finally(() => set({ state: 'none' }));
 }
 
-export function recognize(pcm: Int16Array): Promise<RecogOutput> {
+export function recognize(pcm: Int16Array, onProgress?: (p: RecogProgress) => void): Promise<RecogOutput> {
   if (info.state !== 'ready') return Promise.reject(new Error('AIモデルが読み込まれていません'));
   try {
     localStorage.setItem(CRASH_KEY, String(Date.now()));
@@ -133,8 +162,46 @@ export function recognize(pcm: Int16Array): Promise<RecogOutput> {
   const audio = new Float32Array(pcm.length);
   for (let i = 0; i < pcm.length; i++) audio[i] = pcm[i] / 32768;
   const id = nextId++;
-  return new Promise((res, rej) => {
-    pending.set(id, { res, rej });
+  const secs = pcm.length / 16000;
+  const speed = loadSpeed();
+  let est: number | null = speed ? speed * secs + 200 : null; // 見込みの処理時間（ms）
+  let doneFrac = 0;
+  const t0 = performance.now();
+  const tick = () => {
+    if (!onProgress) return;
+    const el = performance.now() - t0;
+    let frac: number | null = null;
+    let remain: number | null = null;
+    if (est) {
+      // 見込みを超えたら 99% 手前でゆっくり進める（100% は本当に終わったときだけ）
+      frac = el < est ? (el / est) * 0.95 : 0.95 + 0.04 * (1 - Math.exp(-(el - est) / 3000));
+      frac = Math.max(frac, doneFrac * 0.98);
+      remain = Math.max(0, (est - el) / 1000);
+    }
+    onProgress({ frac, remain, elapsed: el / 1000 });
+  };
+  tick();
+  const timer = onProgress ? setInterval(tick, 200) : 0;
+  return new Promise<RecogOutput>((res, rej) => {
+    pending.set(id, {
+      res: (r) => {
+        clearInterval(timer);
+        const el = performance.now() - t0;
+        if (secs > 0.5) saveSpeed(el / secs);
+        onProgress?.({ frac: 1, remain: 0, elapsed: el / 1000 });
+        res(r);
+      },
+      rej: (e) => {
+        clearInterval(timer);
+        rej(e);
+      },
+      done: (f) => {
+        // 分割処理の実測：経過時間 ÷ 終わった割合 で見込みを補正
+        doneFrac = f;
+        const el = performance.now() - t0;
+        if (f > 0) est = el / f;
+      },
+    });
     getWorker().postMessage({ type: 'run', id, audio }, [audio.buffer]);
   });
 }

@@ -3,7 +3,7 @@ import { useApp } from '../ctx';
 import { Recorder, type Recording } from '../lib/recorder';
 import { playUrl, speak, stopSpeaking } from '../lib/tts';
 import { splitWords } from '../lib/g2p';
-import { loadModel, recognize } from '../lib/recognizer';
+import { loadModel, recognize, type RecogProgress } from '../lib/recognizer';
 import { assess, prosodyRef, PASS_SCORE, type Assessment, type ProsodyRef, type WordResult } from '../lib/scoring';
 import { HEARD_NAME, PAIR_SHORT, SHORT_TIPS, soundName } from '../lib/tips';
 
@@ -154,6 +154,7 @@ export function RecordButtons({ r, onStopped, label = '録音開始' }: { r: Ret
 export function useAssessment() {
   const { data, model, dictReady } = useApp();
   const [status, setStatus] = useState<string | null>(null);
+  const [progress, setProgress] = useState<RecogProgress | null>(null);
   const [result, setResult] = useState<Assessment | null>(null);
   const [prosody, setProsody] = useState<ProsodyRef | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -183,8 +184,8 @@ export function useAssessment() {
         if (!dictReady) setStatus('発音辞書を準備中…');
         const { loadDictionary } = await import('../lib/g2p');
         await loadDictionary();
-        setStatus(`音声を分析中…（${rec.seconds.toFixed(0)}秒の録音。この端末の中で処理しています）`);
-        const out = await recognize(rec.pcm);
+        setStatus(`音声を分析中（${rec.seconds.toFixed(0)}秒の録音・この端末の中で処理）`);
+        const out = await recognize(rec.pcm, setProgress);
         const a = assess(out, sentences);
         setProsody(prosodyRef(rec.pcm));
         if (a.score == null) {
@@ -198,6 +199,7 @@ export function useAssessment() {
         return null;
       } finally {
         setStatus(null);
+        setProgress(null);
       }
     },
     [model.state, data.settings, dictReady],
@@ -207,7 +209,31 @@ export function useAssessment() {
     setError(null);
     setProsody(null);
   };
-  return { run, status, result, prosody, error, reset };
+  return { run, status, progress, result, prosody, error, reset };
+}
+
+/** 分析中の表示：進み具合のバーと残り時間の目安 */
+export function AnalysisStatus({ status, progress }: { status: string; progress: RecogProgress | null }) {
+  const pct = progress?.frac != null ? Math.round(progress.frac * 100) : null;
+  let note = '';
+  if (progress) {
+    if (pct == null) note = `${Math.floor(progress.elapsed)}秒経過（初回は処理時間を測っています。次回から残り時間の目安が出ます）`;
+    else if (progress.remain != null && progress.remain >= 1) note = `${pct}%・残り約${Math.ceil(progress.remain)}秒`;
+    else note = `${pct}%・まもなく終わります`;
+  }
+  return (
+    <div className="analysis" role="status" aria-live="polite">
+      <p className="loading">⏳ {status}</p>
+      {progress && (
+        <>
+          <div className={'abar' + (pct == null ? ' indet' : '')} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct ?? undefined}>
+            <div style={pct == null ? undefined : { width: pct + '%' }} />
+          </div>
+          <p className="small muted">{note}</p>
+        </>
+      )}
+    </div>
+  );
 }
 
 function wordClass(w: WordResult) {

@@ -130,12 +130,13 @@ function chunks(a: Float32Array, rate = 16000): [number, number][] {
   return out;
 }
 
-async function run(audio: Float32Array): Promise<{ probs: Float32Array; frames: number; V: number; frameSec: number }> {
+async function run(audio: Float32Array, id?: number): Promise<{ probs: Float32Array; frames: number; V: number; frameSec: number }> {
   if (!session) throw new Error('AIモデルが読み込まれていません');
   const outs: Float32Array[] = [];
   let V = 0,
     frames = 0;
-  for (const [a, b] of chunks(audio)) {
+  const parts = chunks(audio);
+  for (const [a, b] of parts) {
     let x = audio.slice(a, b);
     if (x.length < 1600) continue;
     if (doNormalize) {
@@ -164,6 +165,8 @@ async function run(audio: Float32Array): Promise<{ probs: Float32Array; frames: 
     }
     outs.push(p);
     frames += T;
+    // 分割して処理したときは、実際に終わった割合を画面へ知らせる
+    if (parts.length > 1) post({ type: 'runprog', id, done: b / audio.length });
   }
   const probs = new Float32Array(frames * V);
   let o = 0;
@@ -185,7 +188,7 @@ self.onmessage = async (e: MessageEvent<Msg>) => {
       await load(m.urls, m.wasmBase, Boolean(m.lowMem));
     } else if (m.type === 'run') {
       const t0 = performance.now();
-      const r = await run(m.audio);
+      const r = await run(m.audio, m.id);
       post({ type: 'result', id: m.id, ...r, ms: performance.now() - t0 }, [r.probs.buffer]);
     } else if (m.type === 'clear') {
       await caches.delete(CACHE);

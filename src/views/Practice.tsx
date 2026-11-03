@@ -4,7 +4,7 @@ import { currentText, recordFor, type AppData } from '../lib/storage';
 import type { Assessment } from '../lib/scoring';
 import type { Recording } from '../lib/recorder';
 import { playUrl } from '../lib/tts';
-import { isTouch, Kbd, ModelPanel, ResultPanel, SentenceWords, useAssessment, useHotkeys, useRecording, useSpeaker } from '../components/common';
+import { isTouch, Kbd, ModelPanel, ResultPanel, SentenceWords, useAssessment, useHotkeys, useRecording, useSpeaker, AnalysisStatus } from '../components/common';
 
 export function addWeak(d: AppData, a: Assessment) {
   for (const w of a.weak) {
@@ -164,7 +164,7 @@ export function PracticeView({ goTexts }: { goTexts: () => void }) {
 
         <div className="card right">
           {as.status ? (
-            <p className="loading">⏳ {as.status}</p>
+            <AnalysisStatus status={as.status} progress={as.progress} />
           ) : as.error ? (
             <p className="error">{as.error}</p>
           ) : as.result ? (
