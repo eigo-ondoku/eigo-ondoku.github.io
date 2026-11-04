@@ -278,3 +278,13 @@ details.more summary { font-size: .9rem; }
 .abar.indet > div { width: 30%; position: absolute; animation: abar 1.2s ease-in-out infinite; }
 @keyframes abar { 0% { left: -30%; } 100% { left: 100%; } }
 .analysis .small { margin: 4px 0 0; }
+
+/* 意味（訳・辞書） */
+.meaning { background: #fbf8f1; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin: 6px 0; }
+.meaning .ja { margin: 0 0 6px; }
+.meaning .tag { font-size: .7rem; background: #ece6d8; color: #6b6253; border-radius: 6px; padding: 1px 6px; margin-left: 4px; white-space: nowrap; }
+.wmean { font-size: .92rem; margin-top: 4px; max-height: 260px; overflow: auto; }
+.wmean .whead { font-size: 1.05rem; }
+.wmean ol { margin: 2px 0 6px; padding-left: 1.4em; }
+.wmean li { margin: 1px 0; }
+.btn.on { background: #e6efe9; border-color: var(--accent); }

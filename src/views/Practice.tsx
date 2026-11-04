@@ -1,10 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useApp } from '../ctx';
 import { currentText, recordFor, type AppData } from '../lib/storage';
 import type { Assessment } from '../lib/scoring';
 import type { Recording } from '../lib/recorder';
 import { playUrl } from '../lib/tts';
 import { isTouch, Kbd, ModelPanel, ResultPanel, SentenceWords, useAssessment, useHotkeys, useRecording, useSpeaker, AnalysisStatus } from '../components/common';
+import { MeaningPanel } from '../components/Meaning';
 
 export function addWeak(d: AppData, a: Assessment) {
   for (const w of a.weak) {
@@ -27,8 +28,23 @@ export function PracticeView({ goTexts }: { goTexts: () => void }) {
   const r = s ? recordFor(data, s) : null;
   const passedCount = ss.filter((x) => recordFor(data, x).passed).length;
   const firstUnpassed = ss.findIndex((x) => !recordFor(data, x).passed);
+  const [showMean, setShowMean] = useState(false);
+  const [mword, setMword] = useState<string | null>(null);
+  const sayWord = (w: string) => {
+    say(w, false, 'word');
+    setMword(w);
+  };
+  const saveJa = (ja: string) =>
+    t &&
+    s &&
+    update((d) => {
+      const x = d.texts.find((y) => y.id === t.id)?.sentences.find((y) => y.id === s.id);
+      if (x) x.ja = ja;
+      return d;
+    });
 
   useEffect(() => {
+    setMword(null);
     as.reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx, t?.id]);
@@ -76,6 +92,7 @@ export function PracticeView({ goTexts }: { goTexts: () => void }) {
       p: () => model(false),
       s: () => model(true),
       r: own,
+      m: () => setShowMean((v) => !v),
       ArrowRight: () => go(idx + 1),
       ArrowLeft: () => go(idx - 1),
     },
@@ -128,8 +145,8 @@ export function PracticeView({ goTexts }: { goTexts: () => void }) {
               {r!.attempts}回 ｜ 最新 {r!.last ?? '—'} ｜ 最高 {r!.best ?? '—'} {r!.passed && <b className="okmark">✔</b>}
             </span>
           </div>
-          <SentenceWords text={s.en} words={as.result?.words} onSay={(w) => say(w, false, 'word')} />
-          {s.ja && <p className="ja">{s.ja}</p>}
+          <SentenceWords text={s.en} words={as.result?.words} onSay={sayWord} />
+          {showMean && <MeaningPanel en={s.en} ja={s.ja} word={mword} onSaveJa={saveJa} />}
           {s.notes && <p className="notes">📝 {s.notes}</p>}
 
           <div className="controls">
@@ -144,6 +161,9 @@ export function PracticeView({ goTexts }: { goTexts: () => void }) {
             </button>
             <button className="btn" onClick={own} disabled={!rec.result || rec.recording}>
               🔊 自分の声 <Kbd k="R" />
+            </button>
+            <button className={'btn' + (showMean ? ' on' : '')} onClick={() => setShowMean((v) => !v)} aria-pressed={showMean}>
+              📖 意味 <Kbd k="M" />
             </button>
           </div>
           {rec.recording && (
@@ -168,7 +188,7 @@ export function PracticeView({ goTexts }: { goTexts: () => void }) {
           ) : as.error ? (
             <p className="error">{as.error}</p>
           ) : as.result ? (
-            <ResultPanel a={as.result} prosody={as.prosody} onSay={(w) => say(w, false, 'word')} />
+            <ResultPanel a={as.result} prosody={as.prosody} onSay={sayWord} />
           ) : (
             <div className="howto">
               <p>
@@ -195,6 +215,7 @@ export function PracticeView({ goTexts }: { goTexts: () => void }) {
                   </li>
                 </ol>
               )}
+              <p className="small muted">意味を知りたいときは「📖 意味」{isTouch() ? '' : '（M キー）'}を押してから、単語を押します。</p>
             </div>
           )}
         </div>
