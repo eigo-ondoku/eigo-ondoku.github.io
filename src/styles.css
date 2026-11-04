@@ -62,7 +62,11 @@ h4 { font-size: .9rem; margin: 16px 0 6px; color: var(--muted); }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .btn.rec { background: var(--rec); border-color: var(--rec); color: #fff; font-weight: 700; padding: 10px 22px; }
-.btn.rec.on { animation: pulse 1.2s infinite; }
+.btn.rec { min-width: 10.5em; justify-content: center; font-variant-numeric: tabular-nums; }
+@media (hover: hover) { .btn.rec { min-width: 14.2em; } }
+/* 録音中：同じ場所のまま、薄い赤に変わって点滅 */
+.btn.rec.on { background: #fde3df; border-color: var(--rec); color: var(--rec); animation: pulse 1.2s infinite; }
+.btn.rec.on .kbd { background: #fff; color: var(--rec); border-color: #f2b6ad; }
 .btn.sm { padding: 4px 12px; font-size: .82rem; min-height: 32px; }
 .btn.danger { color: var(--bad); border-color: #efc9c1; }
 .big-tap { min-height: 64px; font-size: 1.05rem; }
@@ -287,4 +291,4 @@ details.more summary { font-size: .9rem; }
 .wmean .whead { font-size: 1.05rem; }
 .wmean ol { margin: 2px 0 6px; padding-left: 1.4em; }
 .wmean li { margin: 1px 0; }
-.btn.on { background: #e6efe9; border-color: var(--accent); }
+.btn.toggle.on { background: #e6efe9; border-color: var(--accent); }

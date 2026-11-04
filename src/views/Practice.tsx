@@ -157,12 +157,12 @@ export function PracticeView({ goTexts }: { goTexts: () => void }) {
               {busy === 'all:slow' ? '■ 停止' : '🐢 ゆっくり'} <Kbd k="S" />
             </button>
             <button className={'btn rec' + (rec.recording ? ' on' : '')} onClick={toggleRec} disabled={Boolean(as.status)}>
-              {rec.recording ? `■ 停止（${rec.elapsed.toFixed(1)}秒）` : '🎙 録音'} <Kbd k="Space" />
+              {rec.recording ? `■ 停止 ${rec.elapsed.toFixed(1)}秒` : '🎙 録音'} <Kbd k="Space" />
             </button>
             <button className="btn" onClick={own} disabled={!rec.result || rec.recording}>
               🔊 自分の声 <Kbd k="R" />
             </button>
-            <button className={'btn' + (showMean ? ' on' : '')} onClick={() => setShowMean((v) => !v)} aria-pressed={showMean}>
+            <button className={'btn toggle' + (showMean ? ' on' : '')} onClick={() => setShowMean((v) => !v)} aria-pressed={showMean}>
               📖 意味 <Kbd k="M" />
             </button>
           </div>

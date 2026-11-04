@@ -147,7 +147,7 @@ export function ReviewView({ goTexts }: { goTexts: () => void }) {
             🐢 ゆっくり <Kbd k="S" />
           </button>
           <button className={'btn rec' + (rec.recording ? ' on' : '')} onClick={toggleRec} disabled={Boolean(as.status)}>
-            {rec.recording ? `■ 停止（${rec.elapsed.toFixed(1)}秒）` : all ? '🎙 全文を録音' : '🎙 録音'} <Kbd k="Space" />
+            {rec.recording ? `■ 停止 ${rec.elapsed.toFixed(1)}秒` : all ? '🎙 全文を録音' : '🎙 録音'} <Kbd k="Space" />
           </button>
           <button className="btn" onClick={() => rec.result && playUrl(rec.result.url)} disabled={!rec.result || rec.recording}>
             🔊 自分の声 <Kbd k="R" />
