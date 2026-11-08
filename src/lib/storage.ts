@@ -46,6 +46,8 @@ export interface Settings {
   vocabUrl: string;
   preprocUrl: string;
   font: 'ud-gothic' | 'ud-kyokasho' | 'system';
+  /** 合格ライン（音の正確さの点数） */
+  passScore: number;
 }
 export const defaultSettings: Settings = {
   browserVoice: '',
@@ -54,6 +56,7 @@ export const defaultSettings: Settings = {
   vocabUrl: HF + 'vocab.json',
   preprocUrl: HF + 'preprocessor_config.json',
   font: 'ud-gothic',
+  passScore: 85,
 };
 
 export interface AppData {

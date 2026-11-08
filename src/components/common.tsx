@@ -186,7 +186,7 @@ export function useAssessment() {
         await loadDictionary();
         setStatus(`音声を分析中（${rec.seconds.toFixed(0)}秒の録音・この端末の中で処理）`);
         const out = await recognize(rec.pcm, setProgress);
-        const a = assess(out, sentences);
+        const a = assess(out, sentences, data.settings.passScore ?? PASS_SCORE);
         setProsody(prosodyRef(rec.pcm));
         if (a.score == null) {
           setError('採点できる単語がありませんでした（英文が辞書にない語だけでできている可能性があります）。');
@@ -329,7 +329,7 @@ export function ResultPanel({ a, prosody, onSay }: { a: Assessment; prosody: Pro
         </div>
         <div>
           <p className={a.passed ? 'passmsg' : 'failmsg'}>{a.passed ? '⭐ 合格' : 'もう一度'}</p>
-          <p className="small muted">音の正確さ（合格 {PASS_SCORE}点・抜けなし）</p>
+          <p className="small muted">音の正確さ（合格 {a.passScore}点・抜けなし）</p>
         </div>
       </div>
 

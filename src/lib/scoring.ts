@@ -215,6 +215,8 @@ export interface ProsodyRef {
 }
 
 export interface Assessment {
+  /** この採点で使った合格ライン */
+  passScore: number;
   score: number | null;
   passed: boolean;
   words: WordResult[];
@@ -243,7 +245,7 @@ export interface Issue {
 
 const ph = (p: string) => `/${p}/`;
 
-export function assess(out: RecogOutput, sentences: string[]): Assessment {
+export function assess(out: RecogOutput, sentences: string[], passScore: number = PASS_SCORE): Assessment {
   const { phones, idsOf } = ctcDecode(out);
   const words: (RefWord & { sentence: number })[] = [];
   sentences.forEach((s, si) => textToRef(s).forEach((w) => words.push({ ...w, sentence: si })));
@@ -358,7 +360,7 @@ export function assess(out: RecogOutput, sentences: string[]): Assessment {
     const c = ws.reduce((s, r) => s + r.correct, 0);
     const t = ws.reduce((s, r) => s + r.total, 0);
     const sc = t ? Math.round((c / t) * 100) : null;
-    return { score: sc, passed: sc != null && sc >= PASS_SCORE && !ws.some((r) => r.omitted) };
+    return { score: sc, passed: sc != null && sc >= passScore && !ws.some((r) => r.omitted) };
   });
 
   // ---------------- フィードバック（根拠のある指摘だけ） ----------------
@@ -424,7 +426,8 @@ export function assess(out: RecogOutput, sentences: string[]): Assessment {
     uncertain,
     connected,
     score,
-    passed: score != null && score >= PASS_SCORE && !omittedAny,
+    passed: score != null && score >= passScore && !omittedAny,
+    passScore,
     words: results,
     sentenceScores,
     heardAll: phones.map((h) => h.p).join(' '),

@@ -91,6 +91,25 @@ export function SettingsView() {
       </div>
 
       <div className="card">
+        <h3>合格ライン</h3>
+        <label>
+          音の正確さが何点以上で合格にするか
+          <select value={s.passScore} onChange={(e) => set({ passScore: Number(e.target.value) })}>
+            {[60, 65, 70, 75, 80, 85, 90, 95].map((v) => (
+              <option key={v} value={v}>
+                {v}点{v === 85 ? '（標準）' : ''}
+              </option>
+            ))}
+          </select>
+        </label>
+        <ul className="small muted">
+          <li>読み飛ばした語がないことも、合格の条件です（この条件は変わりません）。</li>
+          <li>変更はこれからの採点に使われます。これまでの合格・不合格の記録はそのままです。</li>
+          <li>参考：アメリカ人の先生が自然な速さで読んだときは 88〜96点でした。</li>
+        </ul>
+      </div>
+
+      <div className="card">
         <h3>文字の書体</h3>
         <label>
           書体
@@ -134,7 +153,7 @@ export function SettingsView() {
           </tbody>
         </table>
         <ul className="small">
-          <li>合格：音の正確さ {PASS_SCORE}点以上、かつ読み飛ばした語がないこと。</li>
+          <li>合格：音の正確さ {s.passScore}点以上（上の「合格ライン」で変更できます。標準は {PASS_SCORE}点）、かつ読み飛ばした語がないこと。</li>
           <li>同じ計算で毎回採点します。挑戦回数による加点はありません。</li>
           <li>ネイティブでも普通に起こるゆれ（弱く読む母音のあいまい化、water の t が軽い「ラ」になる弾き音など）は正解として扱います。</li>
           <li>AIが別の音と判断しても、正しい音の可能性が残っている箇所は「判定が微妙」と表示し、苦手な発音の集計には入れません。</li>
