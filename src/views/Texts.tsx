@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../ctx';
 import { currentText, recordFor, splitSentences, uid, type Sentence, type TextDoc } from '../lib/storage';
 import { ModelButtons } from '../components/common';
+import { sampleTexts } from '../lib/samples';
 import { lookup, splitWords } from '../lib/g2p';
 
 export function TextsView({ goPractice }: { goPractice: () => void }) {
@@ -105,9 +106,23 @@ export function TextsView({ goPractice }: { goPractice: () => void }) {
       )}
 
       {!adding ? (
-        <button className="btn" onClick={() => setAdding(true)}>
-          ＋ 新しい教材を追加
-        </button>
+        <div className="row wrap">
+          <button className="btn" onClick={() => setAdding(true)}>
+            ＋ 新しい教材を追加
+          </button>
+          {!data.texts.some((t) => t.title.startsWith('例）')) && (
+            <button
+              className="btn"
+              onClick={() => {
+                const ex = sampleTexts();
+                update((d) => ({ ...d, texts: [...d.texts, ...ex] }));
+                toast('教材の例を2つ追加しました');
+              }}
+            >
+              ＋ 教材の例を追加
+            </button>
+          )}
+        </div>
       ) : (
         <div className="card">
           <h3>新しい教材</h3>

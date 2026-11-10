@@ -1,4 +1,5 @@
 // 学習データはすべてブラウザ内（localStorage）に保存する。外部には送信しない。
+import { sampleTexts } from './samples';
 
 export interface Sentence {
   id: string;
@@ -78,7 +79,13 @@ export function emptyData(): AppData {
 export function loadData(): AppData {
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return emptyData();
+    if (!raw) {
+      // 初めて開いたとき：すぐ試せるように教材の例を入れておく
+      const d = emptyData();
+      d.texts = sampleTexts();
+      d.currentText = d.texts[0].id;
+      return d;
+    }
     const d = JSON.parse(raw) as AppData;
     return { ...emptyData(), ...d, settings: { ...defaultSettings, ...d.settings } };
   } catch {
